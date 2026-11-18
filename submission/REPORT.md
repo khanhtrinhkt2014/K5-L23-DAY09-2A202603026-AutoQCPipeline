@@ -1,4 +1,4 @@
-# Báo cáo Day 09 — <Họ và tên>, 2A202603026
+# Báo cáo Day 09 — Nguyễn Khánh Trình, 2A202603026
 
 ## 1. Kết luận trước
 Pipeline kết luận **HOLD** (mã thoát 10). **224** ảnh vào; **22** ảnh bị loại ở cửa vào → **202** ảnh vào QC; xuất **202/202** ảnh ra `export/clean_v1/` dưới dạng **bản NHÁP** (`manifest.json`: `decision: Hold`), chưa phát hành.
