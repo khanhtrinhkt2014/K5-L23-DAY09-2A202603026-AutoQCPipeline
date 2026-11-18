@@ -1,0 +1,18 @@
+{
+  "verdict": {
+    "decision": "Hold",
+    "n_errors": 0,
+    "n_warn_images": 38,
+    "n_images": 202,
+    "warn_ratio": 0.1881,
+    "reasons": [
+      "38/202 ảnh (18.8%) còn cảnh báo chưa người duyệt, >= ngưỡng 10%"
+    ]
+  },
+  "reviewed": 80,
+  "budget": 80,
+  "seconds": 3.1,
+  "exported": "/home/claude/repo/r/submission/export/clean_v1",
+  "config_sha1": "e89489da42b12f683b65b6e6ba5b8a5fdaafb138",
+  "review_sim_sha1": "7988ca22827f780a7043a2300490e679a1697154"
+}
