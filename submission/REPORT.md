@@ -52,7 +52,7 @@ Nguyên nhân có thể và cách kiểm:
 ## 6. Quyết định và ghi chú AI
 **(a)** **Hold.** Muốn Release phải đưa số ảnh còn cảnh báo chưa duyệt xuống ≤ 20/202, tức duyệt thêm ≥ 18 ảnh trong hàng đợi (ngân sách ~100), không nới `conf`. Đổi sang Rework nếu còn ảnh chưa gán nhãn hoặc phát sinh lỗi cú pháp.
 
-**(b)** Dùng Claude viết code và hỗ trợ báo cáo(ghi chép).
+**(b)** Dùng Claude viết code và hỗ trợ tổng hợp báo cáo(ghi chép).
 - Prompt chính: viết 4 module đúng docstring (vào/ra, mã lỗi, ca biên), ngưỡng đọc từ `cfg`, không sửa `data/raw`, chạy pytest đến khi xanh.
 - Cách kiểm: pytest 79/79; `make run` rồi đối chiếu 3 lỗi tự thấy với `02_error_list_v1`; mở ảnh các cặp trùng để kiểm `phash_dist`.
 - Một lần AI sai: khi đọc nhãn bằng mắt, Claude (trong chat) nói box tràn của `img_0030` ở **dòng 8**; pipeline báo **dòng 9**, vì Claude đếm nhầm (gán dòng đầu của `img_0030` cho file trước đó). Số dòng phải lấy từ báo cáo máy, không đếm tay.
