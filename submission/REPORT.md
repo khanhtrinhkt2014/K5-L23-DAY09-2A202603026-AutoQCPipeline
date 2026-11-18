@@ -52,7 +52,23 @@ Calib: 39 ảnh, 51 lỗi chèn (`submission/calibration/calibration_report.md`)
 3. **Box lỏng nhẹ** — 28 box cùng lớp có IoU 0,5–0,7 với nhãn người (vd. `img_0023` 0,54): trên `iou_loose = 0,5` nên không bị cờ.
 
 ## 5. Train: raw vs clean (tùy chọn, chấm riêng)
-**Chưa chạy** — cần GPU (Colab T4). `submission/export/clean_v1/` (bản nháp Hold) đã sẵn sàng để train.
+Colab T4, `yolo26n.pt`, 20 epoch, imgsz 640, batch 16, seed 0 và 1; cùng val (`gold_val`, 40 ảnh) và test (100 ảnh nhãn người). `config_sha1` của mọi lần chạy = `08_summary.json`; `clean` dùng manifest `bb2ba544…` (bản nháp Hold).
+
+| biến thể | #ảnh train | số seed | mAP50 (TB ± độ lệch) | mAP50-95 | precision | recall |
+|---|---|---|---|---|---|---|
+| raw | 224 | 2 | 0.726 ± 0.000 | 0.512 ± 0.004 | 0.764 ± 0.061 | 0.649 ± 0.028 |
+| clean | 202 | 2 | 0.701 ± 0.025 | 0.487 ± 0.008 | 0.759 ± 0.003 | 0.625 ± 0.019 |
+
+AP50 theo lớp (TB 2 seed): car raw 0.738 / clean 0.738 · person 0.822 / 0.823 · truck **0.648 / 0.538** · bus 0.695 / 0.703.
+
+**Kết luận trung thực: chưa kết luận được.** Chênh mAP50 (clean − raw) = **−0.025**, bằng đúng độ lệch giữa 2 seed của `clean` (±0.025; hai seed 0.718 và 0.683). Seed 0 của `clean` (0.718) chỉ thấp hơn `raw` 0.008. Với 2 seed và test 100 ảnh, không thể nói `clean` tốt hơn hay kém hơn `raw`. Gần như toàn bộ khoảng chênh đến từ lớp **truck** (−0.11), lớp chỉ có 24 box trong test và dao động mạnh ngay trong `clean` (0.590 vs 0.486 giữa 2 seed); car/person/bus gần như bằng nhau.
+
+Giả thuyết và cách kiểm:
+1. **`raw` được lợi từ rò rỉ test**: 5 ảnh `raw` trùng ảnh test (`LEAK_TEST`: test_009, 033, 039, 044, 085 — 10 car, 11 person, 1 truck) nên model `raw` đã thấy 5% tập test lúc train; ngoài ra 8 cặp trùng y hệt + 4 cặp gần đúng làm `raw` có 224 ảnh nhưng ít ảnh khác nhau hơn. *Kiểm:* đánh giá lại cả hai model trên test bỏ 5 ảnh rò rỉ (95 ảnh) — nếu khoảng chênh thu hẹp, rò rỉ đã thổi phồng `raw`.
+2. **`clean` vẫn còn lỗi nhãn ngữ nghĩa**: 38 ảnh còn cảnh báo chưa người duyệt (45 ảnh trong hàng đợi vượt ngân sách 80), và §4 cho thấy ảnh "sạch" vẫn thiếu 38 box, nhầm lớp 3 box (đều liên quan truck). `clean` có 41 box truck so với 32 ở `raw` (người duyệt thay nhãn bằng COCO) — phân phối truck đổi nên AP truck biến động. *Kiểm:* train biến thể `oracle` (nhãn người, chặn trên) và so AP truck; xem `07_error_list_v3` lọc theo lớp 2.
+3. **Nhiễu thống kê**: test 100 ảnh, 24 box truck, 2 seed. *Kiểm:* thêm seed 2–4 và báo khoảng tin cậy.
+
+Việc tiếp theo: đánh giá trên test bỏ ảnh rò rỉ, thêm 3 seed, chạy `oracle`; duyệt nốt 45 ảnh trong hàng đợi rồi train lại.
 
 ## 6. Quyết định và ghi chú AI
 **(a)** Quyết định: **Hold** — bản `clean_v1` chỉ dùng thử nghiệm. Để thành Release cần đưa tỉ lệ ảnh còn cảnh báo chưa duyệt < 10% (≤ 20/202 ảnh), tức người duyệt thêm ≥ 18 trong 45 ảnh còn lại của hàng đợi (tăng ngân sách lên ~100 ảnh), **không** nới `conf` chỉ để qua cổng. Điều kiện đổi sang Rework: người duyệt để lại ảnh chưa gán nhãn hoặc lỗi cú pháp mới.
