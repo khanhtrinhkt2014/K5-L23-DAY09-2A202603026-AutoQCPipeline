@@ -76,3 +76,4 @@ Việc tiếp theo: đánh giá trên test bỏ ảnh rò rỉ, thêm 3 seed, ch
 **(b) Dùng AI (Claude) viết code và nháp báo cáo.**
 - Prompt chính: "viết 4 module theo đúng docstring (đầu vào/đầu ra, mã lỗi, ca biên), ngưỡng đọc từ `cfg`, không sửa `data/raw`, chạy pytest đến khi xanh".
 - Cách kiểm: `pytest` 79/79 xanh; chạy `make run` và đối chiếu 3 lỗi tự thấy với `02_error_list_v1`; so ảnh "sạch" với `review_reference`; mở ảnh các cặp trùng để kiểm `phash_dist`.
+- Một lần AI sai: khi đọc nhãn bằng mắt, Claude (trong chat) nói box tràn của `img_0030` ở **dòng 8**; pipeline báo **dòng 9** — Claude đã đếm nhầm vì gán dòng đầu của `img_0030` cho file trước đó. Số dòng phải lấy từ báo cáo máy, không đếm tay.
