@@ -1,36 +1,63 @@
-# Báo cáo Day 09 — <Họ và tên>, <MSHV>
-
-> Xoá mọi `TODO(học viên)` và dòng gợi ý. Mỗi ý trả lời bằng **số lấy từ `submission/reports/`**, kèm mẫu số. Cả báo cáo ~1–2 trang.
+# Báo cáo Day 09 — <Họ và tên>, 2A202603026
 
 ## 1. Kết luận trước
-TODO(học viên): pipeline kết luận **Release / Hold / Rework**? Bao nhiêu ảnh vào, bao nhiêu ảnh ra dataset? Lý do chính (1–3 câu).
+Pipeline kết luận **HOLD** (mã thoát 10). **224** ảnh vào; **22** ảnh bị loại ở cửa vào → **202** ảnh vào QC; xuất **202/202** ảnh ra `export/clean_v1/` dưới dạng **bản NHÁP** (`manifest.json`: `decision: Hold`), chưa phát hành.
+Lý do: không còn lỗi bắt buộc (`n_errors = 0`), nhưng **38/202 ảnh (18,8%)** còn cảnh báo chưa người duyệt, ≥ ngưỡng 10%: hàng đợi cần duyệt có **125 ảnh** trong khi ngân sách chỉ **80 ảnh** (`08_summary.json`).
 
 ## 2. Lỗi và phân việc
-Lấy từ `02_error_list_v1` (gom theo mã lỗi). Cột "ai sửa": **máy** (autofix) hay **người** (hàng đợi); chỉ ghi những mã có mặt trong lô của bạn.
+Số liệu từ `01_intake` + `02_error_list_v1` (QC vòng 1 trên 202 ảnh) và `03_fixes.csv`.
 
 | Mã lỗi | Số ảnh/dòng | Ai sửa (máy/người) | Vì sao |
 |---|---:|---|---|
-| TODO(học viên) | | | |
+| `DUP_IMAGE_EXACT` | 8 ảnh / 224 | máy (loại ở cửa vào) | md5 trùng từng byte, chắc chắn |
+| `DUP_IMAGE_NEAR` | 4 ảnh / 224 | máy (loại) | phash ≤ 12; đã mở xem từng cặp (§3) |
+| `LEAK_TEST` | 5 ảnh / 224 | máy (loại) | trùng ảnh test/gold_val → metric đẹp giả |
+| `BAD_SIZE` / `CORRUPT_IMAGE` | 3 / 2 ảnh | máy (loại) | quy tắc cứng, không cần mắt người |
+| `BOX_OUT_OF_IMAGE` | 8 dòng | máy (`clip_box` 8) | cắt về [0,1], giữ lớp — sửa cú pháp, không đổi nghĩa |
+| `DUP_BOX` / `BAD_CLASS_ID` / `BOX_ZERO` / `BAD_FORMAT` | 7 / 6 / 4 / 3 dòng | máy (`drop_line` 20) | dòng vô nghĩa hoặc lặp: xoá an toàn, có log trước→sau |
+| `BAD_CLASS_NAME` | 2 issue, 1 file | máy (`rename_classes` 1) | `data.yaml` ghi `Person`, `Bus` → đúng `cfg.classes` |
+| `MISSING_LABEL_FILE` | 6 ảnh / 202 | **người** (`needs_label` 6) | máy không bịa nhãn; đẩy lên đầu hàng đợi (trọng số 10) |
+| `POSSIBLE_MISSING` | 53 | **người** | model thấy vật mà nhãn không có — có thể model sai |
+| `POSSIBLE_FALSE_POS` | 29 | **người** | box không khớp vật nào model thấy |
+| `POSSIBLE_LOOSE_BOX` | 28 | **người** | đúng vật, IoU thấp |
+| `POSSIBLE_WRONG_CLASS` | 18 | **người** | nhầm lớp hợp lệ: cần ngữ nghĩa |
+| `EMPTY_LABEL` / `BOX_TINY` / `BOX_HUGE` / `CLASS_RARE` | 12 / 6 / 3 / 4 | **người** | cảnh báo: ảnh nền hay thiếu nhãn? box nhỏ có nên gán? |
 
-TODO(học viên): vì sao `05_review_queue.csv` xếp ảnh đầu hàng như vậy? Với ngân sách 80 ảnh, người xem được bao nhiêu lỗi ngữ nghĩa?
+Tổng: 36 lỗi bắt buộc + 153 cảnh báo ở v1 → sau autofix còn **6** lỗi bắt buộc (đều `MISSING_LABEL_FILE`) → sau người duyệt **0**.
+
+**Hàng đợi** (`05_review_queue.csv`, 125 ảnh): điểm = Σ trọng số mã lỗi × (1 + conf của model). Đầu hàng là `img_0020` (11,5: một dòng `BAD_CLASS_ID` 93 đã bị xoá + model nói bus với conf 0,95 ở chỗ nhãn ghi truck + thiếu một người) và 6 ảnh `NEEDS_LABEL` (10,0) — không có người gán thì các ảnh này là Rework. Người duyệt mô phỏng xem 80/125 ảnh; cảnh báo ngữ nghĩa giảm từ 123 (v2: MISSING 53 + LOOSE 28 + FALSE_POS 24 + WRONG 18) xuống 57 (v3), tức người xử lý được ~54% cảnh báo ngữ nghĩa; 45 ảnh còn lại (điểm thấp: thường chỉ 1 `POSSIBLE_FALSE_POS` hoặc `BOX_TINY`) không được xem.
 
 ## 3. Calibration (2 ngưỡng)
+Calib: 39 ảnh, 51 lỗi chèn (`submission/calibration/calibration_report.md`).
+
 | Tham số | Khởi đầu | Đã chọn | Precision / Recall (trước → sau) | Lý do (đánh đổi) |
 |---|---|---|---|---|
-| `duplicates.phash_dist` | 2 | TODO(học viên) | | |
-| `second_opinion.conf` | 0.25 | TODO(học viên) | | |
+| `duplicates.phash_dist` | 2 | **12** | NEAR: 1,00/0,50 → 1,00/0,67 | Precision bằng 1,00 từ 2 đến 16 nên chọn theo recall. 4–14 cho cùng recall 0,67; 16 cao nhất trên calib (0,83) nhưng **gộp nhầm ảnh khác nhau trên raw** (xem dưới). Chọn 12: bắt hết cặp trùng thật thấy trên raw (khoảng cách 6, 8, 10), cách xa ngưỡng bắt đầu sai (16). |
+| `second_opinion.conf` | 0,25 | **0,6** | MISSING 0,50/1,00 → 0,57/1,00 · WRONG_CLASS 0,56/0,83 → 0,62/0,83 · LOOSE 0,29/0,40 → 0,20/0,20 | Ngân sách người có hạn (80 ảnh) nên cần precision cao hơn để không phí lượt duyệt, nhưng **không được mất recall MISSING** (thiếu nhãn là lỗi nặng nhất): 0,6 là giá trị cao nhất còn giữ MISSING recall 1,00. Cái giá: LOOSE_BOX recall giảm 0,40 → 0,20. 0,8 cho WRONG_CLASS F1 0,91 nhưng MISSING recall rơi còn 0,75. |
 
-TODO(học viên): **một chỗ calibration có thể đánh lừa bạn**, kèm bằng chứng từ dữ liệu của bạn (vd. mở xem vài cặp ảnh bị cho là trùng; số ảnh bị loại ở bước 1 có hợp lý không?).
+**Chỗ calibration đánh lừa:**
+1. `phash_dist = 16` có F1 cao nhất trên calib (0,91) và precision 1,00, nhưng trên raw nó loại thêm 9 ảnh (31 thay vì 22). Mở xem: `img_0011` (tay vợt tennis) bị coi là trùng `img_0008` (2 người trượt tuyết); `img_0013` (bàn làm việc với laptop) bị coi là rò rỉ `test_087` (trận bóng chày); `img_0177` (người lướt sóng) "trùng" `img_0113` (người đàn ông ngồi bàn). Calib 39 ảnh không có cặp "khác nhưng phash gần" nên precision 1,00 là ảo.
+2. Ngưỡng `conf` quyết định luôn kết luận gate: cùng phash 12, conf 0,5 → Hold 21,8%; 0,6 → Hold 18,8%; **0,8 → Release 7,9%**. Nâng conf lên 0,8 để "được Release" là tối ưu cho cổng, không phải cho chất lượng: MISSING recall trên calib còn 0,75, tức ~¼ vật thiếu nhãn sẽ lọt qua. Tôi giữ 0,6 và báo Hold.
+
+Đối chiếu khởi đầu (2 / 0,25) trên raw: chỉ loại 19 ảnh (sót 3 ảnh trùng thật: `img_0223`~`img_0077`, `img_0186`~`img_0061`, rò rỉ `img_0101`~`test_039`), hàng đợi 145 ảnh, Hold 29,3%.
 
 ## 4. Cửa chặn và điều pipeline KHÔNG bắt được
-TODO(học viên): (a) chứng minh gate chặn đúng: chạy `python -m pipeline.run --budget 0 --reports work/rep_nb --export-dir work/exp_nb` (không có người duyệt nên ảnh thiếu file nhãn còn nguyên), chỉ ra kết luận **Rework**, mã thoát 20 và việc **không xuất** dataset. (Đừng sửa tay `work/run/ds`: pipeline dựng lại thư mục này từ raw mỗi lần chạy.) (b) ≥ 2 điểm mù có bằng chứng (box lỏng nhẹ, nhầm lớp mà model lớn cũng nhầm, ảnh trùng biến đổi mạnh…).
+**(a) Gate chặn đúng.** `python -m pipeline.run --budget 0 --reports work/rep_nb --export-dir work/exp_nb` → log: `kết luận: REWORK — còn 6 lỗi bắt buộc (MISSING_LABEL_FILE: 6)`, **mã thoát 20**, `Bước 5/5 KHÔNG xuất`, thư mục `work/exp_nb` **không được tạo**. Không có người gán thì 6 ảnh chưa nhãn chặn cả lô, dù autofix đã sửa hết lỗi cú pháp.
+
+**Lỗi tự nhìn thấy (Bước 1) đều được bắt:** `img_0001` thiếu box người lính → `POSSIBLE_MISSING` (conf 0,95); `img_0030` người ở mép trái có 2 box → dòng 9 `BOX_OUT_OF_IMAGE` (tràn 0,023, autofix cắt) rồi `POSSIBLE_FALSE_POS` (IoU 0,08); `img_0035` lá cây gán person → dòng 2 `POSSIBLE_FALSE_POS` (IoU 0). Hai ảnh đầu được người duyệt; `img_0035` (điểm 2,0) nằm ngoài ngân sách 80 → vẫn còn trong `07_error_list_v3`.
+
+**(b) Điểm mù**, đo bằng cách so 84 ảnh "sạch" (không được duyệt và không có cảnh báo nào ở v3) với nhãn người tham chiếu (`data/review_reference/`):
+1. **Nhầm lớp mà model lớn cũng nhầm** — 3 box: `img_0007` nhãn car, người gán truck (IoU 0,88); `img_0153` nhãn bus và car, người gán truck (IoU 0,92 / 0,79). yolo26l đồng ý với nhãn sai nên `second_opinion` im lặng.
+2. **Thiếu box vật nhỏ/khuất** — 38 box người có mà nhãn không có (vd. `img_0005`, `img_0074` nhiều người nhỏ ở xa) vì model không thấy với conf ≥ 0,6 hoặc vật < `min_area_px`.
+3. **Box lỏng nhẹ** — 28 box cùng lớp có IoU 0,5–0,7 với nhãn người (vd. `img_0023` 0,54): trên `iou_loose = 0,5` nên không bị cờ.
 
 ## 5. Train: raw vs clean (tùy chọn, chấm riêng)
-Chưa train: ghi "chưa chạy" và lý do, rồi bỏ qua phần còn lại của mục này. Nếu đã train: dán bảng từ `submission/results/comparison.md` (model, epoch, seed, số ảnh train mỗi biến thể).
-
-TODO(học viên): chênh mAP50 (clean − raw) so với **độ lệch chuẩn giữa các seed**; kết luận **trung thực** (nằm trong nhiễu thì nói là chưa kết luận được); ≥ 2 giả thuyết giải thích (ảnh trùng/rò rỉ test trong `raw`, nhãn máy còn lại trong `clean`, test chỉ 100 ảnh…) và cách kiểm.
+**Chưa chạy** — cần GPU (Colab T4). `submission/export/clean_v1/` (bản nháp Hold) đã sẵn sàng để train.
 
 ## 6. Quyết định và ghi chú AI
-TODO(học viên): (a) quyết định cuối; nếu Hold/Rework cần làm gì để thành Release? (b) Dùng AI viết code? Ghi 3 dòng: prompt chính, cách bạn kiểm code AI, 1 lần AI sai. Không dùng: ghi "không dùng".
+**(a)** Quyết định: **Hold** — bản `clean_v1` chỉ dùng thử nghiệm. Để thành Release cần đưa tỉ lệ ảnh còn cảnh báo chưa duyệt < 10% (≤ 20/202 ảnh), tức người duyệt thêm ≥ 18 trong 45 ảnh còn lại của hàng đợi (tăng ngân sách lên ~100 ảnh), **không** nới `conf` chỉ để qua cổng. Điều kiện đổi sang Rework: người duyệt để lại ảnh chưa gán nhãn hoặc lỗi cú pháp mới.
 
-*(Thưởng +2, tùy chọn)* CVAT: lọc `width < 20`, ảnh/số box khớp, đối chiếu `BOX_TINY` (xem docs/CVAT_FILTER.md), 1 câu về `can_review`.
+**(b) Dùng AI (Claude) viết code và nháp báo cáo.**
+- Prompt chính: "viết 4 module theo đúng docstring (đầu vào/đầu ra, mã lỗi, ca biên), ngưỡng đọc từ `cfg`, không sửa `data/raw`, chạy pytest đến khi xanh".
+- Cách kiểm: `pytest` 79/79 xanh; chạy `make run` và đối chiếu 3 lỗi tự thấy với `02_error_list_v1`; so ảnh "sạch" với `review_reference`; mở ảnh các cặp trùng để kiểm `phash_dist`.
+- Một lần AI sai: khi đọc nhãn bằng mắt, AI nói box tràn của `img_0030` ở **dòng 8**; pipeline báo **dòng 9** — AI đã đếm nhầm vì gán dòng đầu của `img_0030` cho file trước đó. Số dòng phải lấy từ báo cáo máy, không đếm tay.
